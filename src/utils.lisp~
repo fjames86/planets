@@ -1,0 +1,8 @@
+
+(in-package #:planets)
+
+(defun sq (X) (* x x))
+
+
+
+
