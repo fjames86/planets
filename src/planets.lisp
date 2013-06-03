@@ -10,6 +10,7 @@
 (defparameter *planets* nil)
 (defparameter *ships* nil)
 (defparameter *home* nil)
+(defparameter *ship-speed* 0.02)
 
 (defclass object ()
   ((loc :accessor object-loc :initarg :loc)
@@ -56,9 +57,9 @@
 	(destructuring-bind (ft fx fy fz) (object-loc from)
 	  (destructuring-bind (dt dx dy dz) (object-loc to)
 		(declare (ignore dt))
-		(let* ((h (- (sqrt (+ (sq (- dx fx)) (sq (- dy fy)) (sq (- dz fz))))))
+		(let* ((h (sqrt (+ (sq (- dx fx)) (sq (- dy fy)) (sq (- dz fz)))))
 			   (theta (acos (/ (- dz fz) h)))
-			   (phi (atan (/ (- dy fy) (- dx fx)))))
+			   (phi (atan (- dy fy) (- dx fx))))
 		  (let ((s (make-instance 'ship
 								  :loc (list ft fx fy fz)
 								  :vel (list (* speed h (sin theta) (cos phi))
@@ -169,7 +170,7 @@
   (update-ships dt))
 
 (defun set-home (home)
-  (let ((vel (mapcar #'- (object-vel home))))
+  (let ((vel (object-vel home)))
 	(setf *home* home)
 	(mapc (lambda (obj)
 			(setf (object-loc obj) (trafo (object-loc obj) vel)
@@ -214,7 +215,11 @@
 			 (make-ship 'ship
 						(object-name *home*)
 						(object-name selected)
-						0.02))))
+						*ship-speed*))
+			((sdl:key-pressed-p :sdl-key-t)
+			 (when selected
+			   (set-home selected)
+			   (setf selected nil)))))
 		(:mouse-button-down-event ()
 
           (setf selected nil)								  
@@ -250,7 +255,10 @@
 
 (defun planets (&key (dt 0.05) (background t))
   (if background
-	  (bordeaux-threads:make-thread (lambda () (planets-main dt)))
+	  (bordeaux-threads:make-thread (lambda () (planets-main dt))
+									:name 'planets-thread)
 	  (planets-main dt)))
 
 
+(make-planet 'earth 100 200)
+(make-planet 'mars 200 100)
