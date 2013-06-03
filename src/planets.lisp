@@ -212,10 +212,11 @@
 			((sdl:key-pressed-p :sdl-key-escape)
 			 (sdl:push-quit-event))
 			((sdl:key-pressed-p :sdl-key-f)
-			 (make-ship 'ship
-						(object-name *home*)
-						(object-name selected)
-						*ship-speed*))
+			 (when selected
+			   (make-ship 'ship
+						  (object-name *home*)
+						  (object-name selected)
+						  *ship-speed*)))
 			((sdl:key-pressed-p :sdl-key-t)
 			 (when selected
 			   (set-home selected)
@@ -262,3 +263,5 @@
 
 (make-planet 'earth 100 200)
 (make-planet 'mars 200 100)
+(make-planet 'arakais 10 10)
+(make-planet 'saudakar 500 250)
