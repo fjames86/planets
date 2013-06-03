@@ -56,7 +56,7 @@
 	(destructuring-bind (ft fx fy fz) (object-loc from)
 	  (destructuring-bind (dt dx dy dz) (object-loc to)
 		(declare (ignore dt))
-		(let* ((h (sqrt (+ (sq (- dx fx)) (sq (- dy fy)) (sq (- dz fz)))))
+		(let* ((h (- (sqrt (+ (sq (- dx fx)) (sq (- dy fy)) (sq (- dz fz))))))
 			   (theta (acos (/ (- dz fz) h)))
 			   (phi (atan (/ (- dy fy) (- dx fx)))))
 		  (let ((s (make-instance 'ship
@@ -192,7 +192,7 @@
 				hours (+ hours 100)))
 	  (list years days (round hours)))))
 
-(defun planets-main (&key (dt 0.1))
+(defun planets-main (dt)
   (sdl:with-init ()
 	(sdl:window *window-width* *window-height*
 				:title-caption "Planets, Frank James"
@@ -201,36 +201,56 @@
 	(setf (sdl:frame-rate) 60)
 
 	(sdl:initialise-default-font sdl:*font-10x20*)
-		  
-	(sdl:with-events ()
-	  (:quit-event () t)
-	  (:video-expose-event () (sdl:update-display))
-	  (:key-down-event ()
-	    (cond
-		  ((sdl:key-pressed-p :sdl-key-escape)
-		   (sdl:push-quit-event))))
-	  (:idle ()
-		(sdl:clear-display sdl:*black*)
-		
-		(draw-objects sdl:*default-surface*)
-		(update-objects dt)
 
-		(sdl:draw-string-shaded-* (symbol-name (object-name *home*))
-								  (- *window-width* 300)
-								  (- *window-height* 75)
-								  sdl:*black* sdl:*white*)
+	(let ((selected nil))
+	  (sdl:with-events ()
+		(:quit-event () t)
+		(:video-expose-event () (sdl:update-display))
+		(:key-down-event ()
+		  (cond
+			((sdl:key-pressed-p :sdl-key-escape)
+			 (sdl:push-quit-event))
+			((sdl:key-pressed-p :sdl-key-f)
+			 (make-ship 'ship
+						(object-name *home*)
+						(object-name selected)
+						0.02))))
+		(:mouse-button-down-event ()
+
+          (setf selected nil)								  
+          (dolist (planet *planets*)
+			(let ((p (loc-point (object-loc planet))))
+			  (if (and (not (eq planet *home*))
+					   (< (abs (- (sdl:mouse-x) (sdl:x p))) (planet-radius planet))
+					   (< (abs (- (sdl:mouse-y) (sdl:y p))) (planet-radius planet)))
+				  (setf selected planet)))))
+		(:idle ()
+		  (sdl:clear-display sdl:*black*)
+			   
+		  (draw-objects sdl:*default-surface*)		  		  
+		  (if selected
+			  (sdl:draw-circle (loc-point (object-loc selected))
+							   (+ (planet-radius selected) 5)
+							   :color sdl:*white*))
 		
-		(destructuring-bind (year day hour) (destructure-time (object-time *home*))
-		  (sdl:draw-string-shaded-* (format nil "Year: ~A Day: ~A Time: ~A"
-											year day hour)
+		  (update-objects dt)
+		  
+		  (sdl:draw-string-shaded-* (symbol-name (object-name *home*))
+									(- *window-width* 300)
+									(- *window-height* 75)
+									sdl:*black* sdl:*white*)
+		  
+		  (destructuring-bind (year day hour) (destructure-time (object-time *home*))
+			(sdl:draw-string-shaded-* (format nil "Year: ~A Day: ~A Time: ~A"
+											  year day hour)
 									(- *window-width* 300)
 									(- *window-height* 50) 
 									sdl:*black* sdl:*white*))
-		(sdl:update-display)))))
+		(sdl:update-display))))))
 
-(defun planets (&key (dt 0.1) (background t))
+(defun planets (&key (dt 0.05) (background t))
   (if background
-	  (bordeaux-threads:make-thread (lambda () (planets-main :dt dt)))
-	  (planets-main :dt dt)))
+	  (bordeaux-threads:make-thread (lambda () (planets-main dt)))
+	  (planets-main dt)))
 
 
