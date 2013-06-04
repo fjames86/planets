@@ -184,7 +184,7 @@
   object)
 
 (defun set-home (home)
-  (let ((vel (mapcar #'- (object-vel home))))
+  (let ((vel (object-vel home)))
     (setf *home* home)
     (mapc (lambda (planet)
 			(setf (object-loc planet) (trafo (object-loc planet) vel)
