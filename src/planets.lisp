@@ -12,7 +12,7 @@
 (defparameter *home* nil)
 (defparameter *selected* nil)
 (defparameter *ship-speed* 0.1)
-(defparameter *dt* 0.1)
+(defparameter *dt* 1.0)
 
 (defclass object ()
   ((loc :accessor object-loc :initarg :loc)
@@ -25,8 +25,7 @@
    (radius :accessor planet-radius :initarg :radius)))
 
 (defclass ship (object)
-  ((dest :accessor ship-dest :initarg :dest)
-   (dest-r :accessor ship-dest-r :initarg :dest-r)))
+  ((dest :accessor ship-dest :initarg :dest)))
 
 (defun planet-p (planet)
   (eq (type-of planet) 'planet))
@@ -71,8 +70,7 @@
 											 (* speed (/ (- dy fy) h))
 											 (* speed (/ (- dz fz) h)))
 								  :name name
-								  :dest to
-								  :dest-r (planet-radius to))))
+								  :dest to)))
 			(push s *ships*)
 			(if (null *home*) (setf *home* s))
 			s))))))
@@ -82,7 +80,7 @@
 	(declare (ignore t0))
 	(destructuring-bind (dt dx dy dz) (object-loc (ship-dest ship))
 	  (declare (ignore dt))
-	  (let ((r (ship-dest-r ship)))
+	  (let ((r (planet-radius (ship-dest ship))))
 		(and (< (abs (- dx x)) r)
 			 (< (abs (- dy y)) r)
 			 (< (abs (- dz z)) r))))))
@@ -179,8 +177,14 @@
 		*planets*)
   (update-ships dt))
 
+
+(defun trafo-object (object vel)
+  (setf (object-loc object) (trafo (object-loc object) vel)
+		(object-vel object) (vel-trafo (object-vel object) vel))
+  object)
+
 (defun set-home (home)
-  (let ((vel (object-vel home)))
+  (let ((vel (mapcar #'- (object-vel home))))
     (setf *home* home)
     (mapc (lambda (planet)
 			(setf (object-loc planet) (trafo (object-loc planet) vel)
@@ -216,51 +220,52 @@
       (:quit-event () t)
       (:video-expose-event () (sdl:update-display))
       (:key-down-event ()
-					   (cond
-						 ((sdl:key-pressed-p :sdl-key-escape)
-						  (sdl:push-quit-event))
-						 ((sdl:key-pressed-p :sdl-key-f)
-						  (when (and *selected* (planet-p *home*))
-							(make-ship 'ship
-									   (object-name *home*)
-									   (object-name *selected*)
-									   *ship-speed*)))
-						 ((sdl:key-pressed-p :sdl-key-e)
-						  (set-home (make-ship 'ship
-											   *home*
-											   *selected*
-											   *ship-speed*)))
-						 ((sdl:key-pressed-p :sdl-key-t)
-						  (when *selected*
-							(set-home *selected*)
-							(setf *selected* nil)))))
+	    (cond
+		  ((sdl:key-pressed-p :sdl-key-escape)
+		   (sdl:push-quit-event))
+		  ((sdl:key-pressed-p :sdl-key-f)
+		   (when (and *selected* (planet-p *home*))
+			 (make-ship 'ship
+						*home*
+						*selected*
+						*ship-speed*)))
+		  ((sdl:key-pressed-p :sdl-key-e)
+		   (when (and *selected* (planet-p *home*))
+			 (set-home (make-ship 'ship
+								  *home*
+								  *selected*
+								  *ship-speed*))))
+		  ((sdl:key-pressed-p :sdl-key-t)
+		   (when *selected*
+			 (set-home *selected*)
+			 (setf *selected* nil)))))
       (:mouse-button-down-event ()
-								(setf *selected* nil)
-								(dolist (planet *planets*)
-								  (let ((p (loc-point (object-loc planet))))
-									(if (and (not (eq planet *home*))
-											 (< (abs (- (sdl:mouse-x) (sdl:x p))) (planet-radius planet))
-											 (< (abs (- (sdl:mouse-y) (sdl:y p))) (planet-radius planet)))
-										(setf *selected* planet)))))
+        (setf *selected* nil)
+		(dolist (planet *planets*)
+		  (let ((p (loc-point (object-loc planet))))
+			(if (and (not (eq planet *home*))
+					 (< (abs (- (sdl:mouse-x) (sdl:x p))) (planet-radius planet))
+					 (< (abs (- (sdl:mouse-y) (sdl:y p))) (planet-radius planet)))
+				(setf *selected* planet)))))
       (:idle ()
-			 (sdl:clear-display sdl:*black*)
-			 (draw-objects sdl:*default-surface*)
-			 (if *selected*
-				 (sdl:draw-circle (loc-point (object-loc *selected*))
-								  (+ (planet-radius *selected*) 5)
-								  :color sdl:*white*))
-			 (update-objects *dt*)
-			 (sdl:draw-string-shaded-* (symbol-name (object-name *home*))
-									   (- *window-width* 300)
-									   (- *window-height* 75)
-									   sdl:*black* sdl:*white*)
-			 (destructuring-bind (year day hour) (destructure-time (object-time *home*))
-			   (sdl:draw-string-shaded-* (format nil "Year: ~A Day: ~A Time: ~A"
-												 year day hour)
-										 (- *window-width* 300)
-										 (- *window-height* 50)
-										 sdl:*black* sdl:*white*))
-			 (sdl:update-display)))))
+	    (sdl:clear-display sdl:*black*)
+		(draw-objects sdl:*default-surface*)
+		(if *selected*
+			(sdl:draw-circle (loc-point (object-loc *selected*))
+							 (+ (planet-radius *selected*) 5)
+							 :color sdl:*white*))
+		(update-objects *dt*)
+		(sdl:draw-string-shaded-* (symbol-name (object-name *home*))
+								  (- *window-width* 300)
+								  (- *window-height* 75)
+								  sdl:*black* sdl:*white*)
+		(destructuring-bind (year day hour) (destructure-time (object-time *home*))
+		  (sdl:draw-string-shaded-* (format nil "Year: ~A Day: ~A Time: ~A"
+											year day hour)
+									(- *window-width* 300)
+									(- *window-height* 50)
+									sdl:*black* sdl:*white*))
+		(sdl:update-display)))))
 
 (defun planets (&key (background t))
   (if background

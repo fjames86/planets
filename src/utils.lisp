@@ -19,9 +19,9 @@ to the rest frame"
 			(v (let ((tmp (sqrt (+ (sq vx) (sq vy) (sq vz)))))
 				 (if (< tmp 0.00001) 0.00001 tmp))))
 		(list (* g (- t0 rv))
-			  (+ x0 (* vx (- (/ (- g 1) (sq v)) (* g t0))))
-			  (+ y0 (* vy (- (/ (- g 1) (sq v)) (* g t0))))
-			  (+ z0 (* vz (- (/ (- g 1) (sq v)) (* g t0)))))))))
+			  (+ x0 (* vx (- (/ (* rv (- g 1)) (sq v)) (* g t0))))
+			  (+ y0 (* vy (- (/ (* rv (- g 1)) (sq v)) (* g t0))))
+			  (+ z0 (* vz (- (/ (* rv (- g 1)) (sq v)) (* g t0)))))))))
 
 ;; u' = (v + u|| + u/gamma)/(1 + v.u/c^2)
 ;; u|| u parallel to v, u u perpendicular to v
